@@ -188,3 +188,30 @@ if st.button("Générer un résumé"):
     st.text_area(reviews_text)
     st.write("Résumé :")
     st.text(summary)
+
+# Chargement des modèles et initialisation de la pipeline de génération de texte
+dialo_tokenizer = AutoTokenizer.from_pretrained("microsoft/DialoGPT-large")
+dialo_model = AutoModelForCausalLM.from_pretrained("microsoft/DialoGPT-large")
+dialogue_generator = pipeline('text-generation', model=dialo_model, tokenizer=dialo_tokenizer)
+
+
+# Interface utilisateur pour DialoGPT
+st.subheader('DialoGPT Insights Generator')
+st.write('Entrez les avis clients ou sélectionnez des avis prédéfinis pour générer des insights.')
+
+# Sélection des avis prédéfinis
+default_reviews = ["Great service but the food was bland.Loved the ambiance and the dessert, but the main course was too salty. The waiter was rude. ", "The ambiance was lovely, but the food was terrible and the service was great."]
+selected_reviews = st.selectbox('Choisissez des avis prédéfinis', options=default_reviews)
+
+# Entrée pour les avis personnalisés
+user_reviews = st.text_area("Ou écrivez vos propres avis ici :", height=100, value=selected_reviews)
+
+combined_reviews = " ".join(user_reviews[:5])  # Limiter à 5 avis pour l'analyse
+prompt = (
+    f"Customer Reviews: {combined_reviews}\n"
+    f"AI: Based on these reviews, the key weaknesses of the restaurant are:"
+)
+generated_response = dialogue_generator(prompt, max_length=300)
+answer=generated_response[0]['generated_text']
+st.write('Insights générés :', answer)
+   
