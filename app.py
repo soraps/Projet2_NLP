@@ -197,33 +197,48 @@ if st.button("Générer un résumé"):
 dialo_tokenizer = AutoTokenizer.from_pretrained("microsoft/DialoGPT-large")
 dialo_model = AutoModelForCausalLM.from_pretrained("microsoft/DialoGPT-large")
 dialogue_generator = pipeline('text-generation', model=dialo_model, tokenizer=dialo_tokenizer)
+# Chargement des données
+@st.cache_data
+def load_data():
+    data = {
+        'business_id': ['123', '123', '123', '456', '456'],
+        'text': [
+            "The waiter was rude.",
+            "The steak was fantastic, but the room was too noisy.",
+            "Amazing cocktails and friendly staff, but the price is too high.",
+            "Great service but the food was bland.",
+            "Loved the ambiance and the dessert, but the main course was too salty." 
+        ]
+    }
+    return pd.DataFrame(data)
 
+df = load_data()
 
-# Fonction pour générer des insights à partir des avis avec DialoGPT
+# Fonction pour générer des insights à partir des avis
 def generate_dialogue_insights(reviews):
-    combined_reviews = " ".join(reviews[:5])  # Limiter à 5 avis pour l'analyse
+    combined_reviews = " ".join(reviews)  
     prompt = (
         f"Customer Reviews: {combined_reviews}\n"
-        f"AI: Based on these reviews, the key weaknesses of the restaurant are :"
+        f"AI: Based on these reviews, the key weaknesses of the restaurant are:"
     )
     generated_response = dialogue_generator(prompt, max_length=200, num_return_sequences=1)
     return generated_response[0]['generated_text']
 
-# Titre de l'application
-st.title('L\'analyse des avis des restaurants YELP')
+# Interface utilisateur pour DialoGPT
+st.subheader('DialoGPT Insights Generator')
+st.write('Sélectionnez un restaurant pour générer des insights à partir des avis des clients.')
 
-# Menu déroulant pour la sélection du business_id
-business_id = st.selectbox("Sélectionnez un restaurant :", restaurants_df['business_id'])
+# Création de la liste déroulante pour la sélection du business_id
+business_ids = df['business_id'].unique()
+selected_business_id = st.selectbox('Choisissez un business ID', options=business_ids)
 
-# Afficher un avis au hasard pour le restaurant sélectionné
-if st.button('Générer des insights avec DialoGPT'):
-    # Filtrer les avis pour le restaurant sélectionné
-    selected_reviews = reviews_df[reviews_df['business_id'] == business_id]['text'].tolist()
-    
-    # Vérifier s'il y a des avis disponibles
-    if selected_reviews:
-        # Générer des insights à partir des avis sélectionnés
-        insights = generate_dialogue_insights(selected_reviews)
-        st.write('Insights générés :', insights)
-    else:
-        st.error("Aucun avis disponible pour ce restaurant.")
+# Récupérer les avis pour le business_id sélectionné
+selected_reviews = df[df['business_id'] == selected_business_id]['text'].tolist()
+
+# Afficher les avis sélectionnés et permettre à l'utilisateur de les modifier si besoin
+user_reviews = st.text_area("Avis sur le restaurant sélectionné :", value=" ".join(selected_reviews), height=150)
+
+if st.button('Générer des insights'):
+    # Générer les insights en utilisant DialoGPT
+    insights = generate_dialogue_insights(user_reviews.split('. '))
+    st.write('Insights générés :', insights)
