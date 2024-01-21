@@ -55,6 +55,19 @@ user_input = st.text_area("Écrivez votre avis ici :")
 
 if st.button('Corriger et Traduire l\'avis'):
     if user_input:
+        
+        # Détection de la langue
+        detected_language = detect(user_input)
+        st.write('Langue détectée :', detected_language)
+        # Traduction en anglais si nécessaire
+        if detected_language != 'en':
+            # Préparer le texte pour la traduction
+            translated = model_translation.generate(**tokenizer_translation(user_input, return_tensors="pt", padding=True))
+            translated_text = tokenizer_translation.decode(translated[0], skip_special_tokens=True)
+            st.write('Avis traduit en anglais :', translated_text)
+            user_input=translated_text
+        else:
+            st.write('Avis déjà en anglais :', user_input)
         # Correction de la grammaire et de l'orthographe
         corrected_output = grammar_correction(user_input, max_length=512)
         corrected_text = corrected_output[0]['generated_text']
@@ -64,18 +77,6 @@ if st.button('Corriger et Traduire l\'avis'):
         spelled_corrected_text = fix_spelling(corrected_text, max_length=2048)
         st.write('Correction orthographique :', spelled_corrected_text[0]['generated_text'])
 
-        # Détection de la langue
-        detected_language = detect(corrected_text)
-        st.write('Langue détectée :', detected_language)
-
-        # Traduction en anglais si nécessaire
-        if detected_language != 'en':
-            # Préparer le texte pour la traduction
-            translated = model_translation.generate(**tokenizer_translation(corrected_text, return_tensors="pt", padding=True))
-            translated_text = tokenizer_translation.decode(translated[0], skip_special_tokens=True)
-            st.write('Avis traduit en anglais :', translated_text)
-        else:
-            st.write('Avis déjà en anglais :', corrected_text)
     else:
         st.error('Veuillez saisir un avis avant de cliquer sur le bouton.')
 
