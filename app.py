@@ -16,7 +16,6 @@ from sumy.nlp.tokenizers import Tokenizer
 from sumy.summarizers.lsa import LsaSummarizer as Summarizer
 
 
-
 # Configuration pour assurer la reproductibilité lors de la génération de texte
 set_seed(123)
 
@@ -189,29 +188,42 @@ if st.button("Générer un résumé"):
     st.write("Résumé :")
     st.text(summary)
 
+
+
+# Interface utilisateur pour DialoGPTimport streamlit as st
+
+
 # Chargement des modèles et initialisation de la pipeline de génération de texte
 dialo_tokenizer = AutoTokenizer.from_pretrained("microsoft/DialoGPT-large")
 dialo_model = AutoModelForCausalLM.from_pretrained("microsoft/DialoGPT-large")
 dialogue_generator = pipeline('text-generation', model=dialo_model, tokenizer=dialo_tokenizer)
 
 
-# Interface utilisateur pour DialoGPT
-st.subheader('DialoGPT Insights Generator')
-st.write('Entrez les avis clients ou sélectionnez des avis prédéfinis pour générer des insights.')
+# Fonction pour générer des insights à partir des avis avec DialoGPT
+def generate_dialogue_insights(reviews):
+    combined_reviews = " ".join(reviews[:5])  # Limiter à 5 avis pour l'analyse
+    prompt = (
+        f"Customer Reviews: {combined_reviews}\n"
+        f"AI: Based on these reviews, the key weaknesses of the restaurant are :"
+    )
+    generated_response = dialogue_generator(prompt, max_length=200, num_return_sequences=1)
+    return generated_response[0]['generated_text']
 
-# Sélection des avis prédéfinis
-default_reviews = ["Great service but the food was bland.Loved the ambiance and the dessert, but the main course was too salty. The waiter was rude. ", "The ambiance was lovely, but the food was terrible and the service was great."]
-selected_reviews = st.selectbox('Choisissez des avis prédéfinis', options=default_reviews)
+# Titre de l'application
+st.title('L\'analyse des avis des restaurants YELP')
 
-# Entrée pour les avis personnalisés
-user_reviews = st.text_area("Ou écrivez vos propres avis ici :", height=100, value=selected_reviews)
+# Menu déroulant pour la sélection du business_id
+business_id = st.selectbox("Sélectionnez un restaurant :", restaurants_df['business_id'])
 
-combined_reviews = " ".join(user_reviews[:5])  # Limiter à 5 avis pour l'analyse
-prompt = (
-    f"Customer Reviews: {combined_reviews}\n"
-    f"AI: Based on these reviews, the key weaknesses of the restaurant are:"
-)
-generated_response = dialogue_generator(prompt, max_length=300)
-answer=generated_response[0]['generated_text']
-st.write('Insights générés :', answer)
-   
+# Afficher un avis au hasard pour le restaurant sélectionné
+if st.button('Générer des insights avec DialoGPT'):
+    # Filtrer les avis pour le restaurant sélectionné
+    selected_reviews = reviews_df[reviews_df['business_id'] == business_id]['text'].tolist()
+    
+    # Vérifier s'il y a des avis disponibles
+    if selected_reviews:
+        # Générer des insights à partir des avis sélectionnés
+        insights = generate_dialogue_insights(selected_reviews)
+        st.write('Insights générés :', insights)
+    else:
+        st.error("Aucun avis disponible pour ce restaurant.")
