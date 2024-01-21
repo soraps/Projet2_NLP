@@ -186,7 +186,7 @@ if st.button("Générer un résumé"):
     st.write("Avis pour le restaurant sélectionné :")
     st.text_area(reviews_text)
     st.write("Résumé :")
-    st.text(summary)
+    st.write(summary)
 
 
 
