@@ -7,6 +7,15 @@ from langdetect import detect
 from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
 from transformers import AutoModelForSequenceClassification
 import random
+from setfit import AbsaModel
+from transformers import pipeline, set_seed, GPT2LMHeadModel, GPT2Tokenizer
+from transformers import AutoModelForCausalLM, AutoTokenizer
+
+from sumy.parsers.plaintext import PlaintextParser
+from sumy.nlp.tokenizers import Tokenizer
+from sumy.summarizers.lsa import LsaSummarizer as Summarizer
+
+
 
 # Configuration pour assurer la reproductibilité lors de la génération de texte
 set_seed(123)
@@ -17,14 +26,14 @@ st.title('L\'analyse des avis des restaurants YELP')
 # Chargement des données des restaurants
 @st.cache_data
 def load_restaurants():
-    return pd.read_csv('C:/Users/rosel/Desktop/ML_NLP/Projet2_NLP/business.csv',sep=';',encoding='utf-8')
+    return pd.read_csv('business.csv',sep=';',encoding='utf-8')
 
 
 # Chargement des données
 @st.cache_data
 def load_reviews():
     #data = pd.read_csv('review_final.csv')
-    data = pd.read_csv('C:/Users/rosel/Desktop/ML_NLP/Projet2_NLP/data_train_review_app.csv',sep=';',encoding='utf-8')
+    data = pd.read_csv('data_train_review_app.csv',sep=';',encoding='utf-8')
     return data
 
 restaurants_df = load_restaurants()
@@ -101,7 +110,7 @@ if st.button('Afficher un avis au hasard'):
             st.text_area("Avis original", random_review['text'], height=150)
             # Analyse de sentiment avec VADER
             if 'sentiment_vader' in random_review:
-                st.text_area("Analyse de sentiment avec VADER :", random_review['sentiment_vader'], height=150)
+                st.write("Analyse de sentiment avec VADER :", random_review['sentiment_vader'], height=150)
             else:
                 st.error("La colonne des avis corrigés n'existe pas dans le DataFrame.")
 
@@ -114,3 +123,68 @@ if st.button('Afficher un avis au hasard'):
     else:
         st.error("Erreur : Impossible de trouver l'ID du restaurant sélectionné.")
 
+
+#Chargement ABSA
+absa_model = AbsaModel.from_pretrained(
+    "tomaarsen/setfit-absa-paraphrase-mpnet-base-v2-restaurants-aspect",
+    "tomaarsen/setfit-absa-paraphrase-mpnet-base-v2-restaurants-polarity"
+)# Section ABSA avec menu déroulant pour le choix des commentaires
+st.subheader('Analyse de sentiment des aspects (ABSA)')
+# Liste des commentaires prédéfinis
+predefined_reviews = [
+    "The ambiance was lovely as well as the service, but the food was not that good.",
+    "The food was excellent, but the service was too slow.",
+    "Great location, but the prices are too high for the quality provided.",
+    "The dessert was divine, though the main course did not meet expectations."
+]
+
+# Création du menu déroulant avec les commentaires prédéfinis
+selected_review = st.selectbox("Choisir un commentaire pour l'analyse :", predefined_reviews)
+
+if st.button('Analyser les aspects'):
+    if selected_review:
+        # Effectuer l'analyse ABSA
+        aspects = absa_model.predict(selected_review)
+        
+        # Afficher les résultats
+        if aspects:
+            st.write('Résultats de l\'analyse des aspects :')
+            for aspect in aspects:
+                st.json(aspect)
+        else:
+            st.error('Aucun aspect détecté dans l\'avis.')
+    else:
+        st.error('Veuillez choisir un commentaire pour l\'analyse.')
+
+
+# Fonction pour effectuer le résumé des avis
+def summarize_text(text, sentences_count):
+    parser = PlaintextParser.from_string(text, Tokenizer("english"))
+    summarizer = Summarizer()
+    summary = summarizer(parser.document, sentences_count)
+    return ' '.join([str(sentence) for sentence in summary])
+
+
+
+# Regrouper les avis par 'business_id' et créer un résumé pour chaque restaurant
+grouped_reviews = reviews_df.groupby('business_id')['text'].apply(' '.join)
+
+# Interface utilisateur pour la section de résumé
+st.subheader("Résumé des avis des restaurants")
+restaurant_id = st.selectbox("Choisissez un ID de restaurant", options=grouped_reviews.index)
+selected_sentences_count = st.slider("Choisissez le nombre de phrases pour le résumé", min_value=1, max_value=10, value=2)
+
+if st.button("Générer un résumé"):
+    # Obtenir les avis pour le restaurant sélectionné
+    reviews_text = grouped_reviews[restaurant_id]
+    
+    # Limiter le texte aux 3 premiers avis pour éviter une surcharge de texte
+    reviews_text = ' '.join(reviews_text.split(' ')[:500])  # Ajuster le nombre de mots si nécessaire
+    
+    # Générer le résumé
+    summary = summarize_text(reviews_text, selected_sentences_count)
+    
+    st.write("Avis pour le restaurant sélectionné :")
+    st.text_area(reviews_text)
+    st.write("Résumé :")
+    st.text(summary)
