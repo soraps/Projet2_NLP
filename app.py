@@ -1,14 +1,12 @@
 import streamlit as st
 from transformers import pipeline, set_seed, AutoModelForCausalLM, AutoTokenizer
-from transformers import AutoModelForSeq2SeqLM, MarianMTModel, MarianTokenizer
+from transformers import AutoModelForSeq2SeqLM
 from setfit import AbsaModel
 import pandas as pd
-from langdetect import detect
 from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
 from transformers import AutoModelForSequenceClassification
 import random
 from setfit import AbsaModel
-from transformers import pipeline, set_seed, GPT2LMHeadModel, GPT2Tokenizer
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
 from sumy.parsers.plaintext import PlaintextParser
