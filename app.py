@@ -6,6 +6,7 @@ import pandas as pd
 from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
 from transformers import AutoModelForSequenceClassification
 import random
+import spacy_streamlit
 from setfit import AbsaModel
 from transformers import AutoModelForCausalLM, AutoTokenizer
 from sumy.parsers.plaintext import PlaintextParser
