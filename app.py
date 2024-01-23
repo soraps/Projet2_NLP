@@ -1,7 +1,7 @@
 import streamlit as st
 from transformers import pipeline, set_seed, AutoModelForCausalLM, AutoTokenizer
 from transformers import AutoModelForSeq2SeqLM, MarianMTModel, MarianTokenizer
-#from setfit import AbsaModel
+from setfit import AbsaModel
 import pandas as pd
 from langdetect import detect
 from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
@@ -37,48 +37,6 @@ def load_reviews():
 
 restaurants_df = load_restaurants()
 reviews_df = load_reviews()
-
-# Initialisation des pipelines de Transformers pour la correction et la traduction
-tokenizer_correction = AutoTokenizer.from_pretrained("vennify/t5-base-grammar-correction")
-model_correction = AutoModelForSeq2SeqLM.from_pretrained("vennify/t5-base-grammar-correction")
-grammar_correction = pipeline("text2text-generation", model=model_correction, tokenizer=tokenizer_correction)
-
-fix_spelling = pipeline("text2text-generation", model="oliverguhr/spelling-correction-english-base")
-
-# Initialisation du modèle de traduction Marian
-tokenizer_translation = MarianTokenizer.from_pretrained("Helsinki-NLP/opus-mt-es-en")
-model_translation = MarianMTModel.from_pretrained("Helsinki-NLP/opus-mt-es-en")
-
-# Interface utilisateur pour saisir un avis
-st.write('Correction et Traduction de l\'avis d\'un restaurant')
-user_input = st.text_area("Écrivez votre avis ici :")
-
-if st.button('Corriger et Traduire l\'avis'):
-    if user_input:
-        
-        # Détection de la langue
-        detected_language = detect(user_input)
-        st.write('Langue détectée :', detected_language)
-        # Traduction en anglais si nécessaire
-        if detected_language != 'en':
-            # Préparer le texte pour la traduction
-            translated = model_translation.generate(**tokenizer_translation(user_input, return_tensors="pt", padding=True))
-            translated_text = tokenizer_translation.decode(translated[0], skip_special_tokens=True)
-            st.write('Avis traduit en anglais :', translated_text)
-            user_input=translated_text
-        else:
-            st.write('Avis déjà en anglais :', user_input)
-        # Correction de la grammaire et de l'orthographe
-        corrected_output = grammar_correction(user_input, max_length=512)
-        corrected_text = corrected_output[0]['generated_text']
-        st.write('Avis corrigé :', corrected_text)
-
-        # Correction de l'orthographe (optionnel, si vous souhaitez l'utiliser)
-        spelled_corrected_text = fix_spelling(corrected_text, max_length=2048)
-        st.write('Correction orthographique :', spelled_corrected_text[0]['generated_text'])
-
-    else:
-        st.error('Veuillez saisir un avis avant de cliquer sur le bouton.')
 
 # Chargement du modèle BERT pour l'analyse de sentiment
 sentiment_analysis = pipeline("text-classification", model="mrcaelumn/yelp_restaurant_review_sentiment_analysis")
