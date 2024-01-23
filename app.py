@@ -23,28 +23,21 @@ st.title('L\'analyse des avis des restaurants YELP')
 # Chargement des données des restaurants
 @st.cache_data
 def load_restaurants():
-    return pd.read_csv('business.csv',sep=';',encoding='utf-8')
+    return pd.read_csv('restaurants.csv',sep=';',encoding='utf-8')
 
 
 # Chargement des données
 @st.cache_data
 def load_reviews():
-    #data = pd.read_csv('review_final.csv')
-    data = pd.read_csv('data_train_review_app.csv',sep=';',encoding='utf-8')
+    data = pd.read_csv('review_final.csv',sep=';',encoding='utf-8')
+    #data = pd.read_csv('data_train_review_app.csv',sep=';',encoding='utf-8')
     return data
 
 restaurants_df = load_restaurants()
 reviews_df = load_reviews()
 
-# Chargement du modèle BERT pour l'analyse de sentiment
-sentiment_analysis = pipeline("text-classification", model="mrcaelumn/yelp_restaurant_review_sentiment_analysis")
-
-# Fonction pour convertir le label en score numérique
-def convert_label(label):
-    return {'LABEL_2': 'Positive', 'LABEL_1': 'Neutre', 'LABEL_0': 'Negative'}.get(label, 0)
-
 # Création de la liste déroulante pour la sélection du restaurant
-restaurant_id_to_name = dict(zip(restaurants_df['business_id'], restaurants_df['name']))
+restaurant_id_to_name = dict(zip(restaurants_df['id'], restaurants_df['name']))
 restaurant_selection = st.selectbox('Choisissez un restaurant', options=list(restaurant_id_to_name.values()))
 
 # Lorsque l'utilisateur sélectionne un restaurant, trouvez son 'business_id'
@@ -62,23 +55,29 @@ if st.button('Afficher un avis au hasard'):
         if not selected_reviews.empty:
             # Sélectionner un avis au hasard
             random_review = selected_reviews.sample(1).iloc[0]
-            st.write('Avis sélectionné au hasard :')
-            st.text_area("Avis original", random_review['text'], height=150)
-            # Analyse de sentiment avec VADER
+            st.subheader('Avis sélectionné au hasard :')
+            st.subheader("Avis original:")
+            st.write(random_review['text'], height=150)
+            # Vérifiez si la colonne de correction existe et affichez-la
             if 'sentiment_vader' in random_review:
-                st.write("Analyse de sentiment avec VADER :", random_review['sentiment_vader'], height=150)
+                st.subheader("Prediction de sentiment avec Vader: \n")
+                st.write(random_review['sentiment_vader'])
             else:
-                st.error("La colonne des avis corrigés n'existe pas dans le DataFrame.")
-
-            #Analyse de sentiment avec BERT
-            bert_result = sentiment_analysis(random_review['text'])
-            sentiment_score = convert_label(bert_result[0]['label'])
-            st.write("Analyse de sentiment avec BERT :", sentiment_score)
-
-
+                st.error("La colonne des prédiction de sentiment avec vader n'existe pas dans le DataFrame.")
+            if 'sentiment_resultsBert_label' in random_review:
+                st.subheader("Prediction de sentiment avec Bert:\n")
+                st.write(random_review['sentiment_resultsBert_label'], height=150)
+            else:
+                st.error("La colonne des prédiction de sentiment avec Bert n'existe pas dans le DataFrame.")
+            if 'cnn_sentiment_label' in random_review:
+                st.subheader("Prediction de sentiment avec CNN:\n\n")
+                st.write(random_review['cnn_sentiment_label'], height=150)
+            else:
+                st.error("La colonne des prédiction de sentiment avec CNN n'existe pas dans le DataFrame.")
+        else:
+            st.error('Aucun avis trouvé pour ce restaurant.')
     else:
         st.error("Erreur : Impossible de trouver l'ID du restaurant sélectionné.")
-
 
 #Chargement ABSA
 absa_model = AbsaModel.from_pretrained(
